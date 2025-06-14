@@ -1,69 +1,52 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Shield, CheckCircle, XCircle, AlertTriangle, Server, Globe, Mail } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 const SPFValidator = () => {
   const [domain, setDomain] = useState('');
   const [results, setResults] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const { toast } = useToast();
 
   const validateSPF = async () => {
     if (!domain.trim()) return;
     
     setIsValidating(true);
     
-    // Simulate API call - replace with actual backend call
-    setTimeout(() => {
-      const mockResults = {
-        domain: domain,
-        record: 'v=spf1 include:_spf.google.com include:mailgun.org include:_spf.salesforce.com ~all',
-        valid: true,
-        mechanisms: [
-          { type: 'version', value: 'spf1', description: 'SPF version 1' },
-          { type: 'include', value: '_spf.google.com', description: 'Include Google\'s SPF record', status: 'valid' },
-          { type: 'include', value: 'mailgun.org', description: 'Include Mailgun\'s SPF record', status: 'valid' },
-          { type: 'include', value: '_spf.salesforce.com', description: 'Include Salesforce\'s SPF record', status: 'valid' },
-          { type: 'all', value: '~all', description: 'Soft fail for all other sources', status: 'valid' }
-        ],
-        lookups: {
-          total: 3,
-          limit: 10,
-          warning: false
+    try {
+      const response = await fetch('/api/validate-spf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        policy: {
-          qualifier: '~all',
-          action: 'Soft Fail',
-          description: 'Emails from unauthorized sources will be marked as suspicious but not rejected'
-        },
-        includes: [
-          {
-            domain: '_spf.google.com',
-            record: 'v=spf1 include:_netblocks.google.com include:_netblocks2.google.com include:_netblocks3.google.com ~all',
-            valid: true,
-            ip_ranges: ['216.239.32.0/19', '64.233.160.0/19', '66.249.80.0/20']
-          },
-          {
-            domain: 'mailgun.org',
-            record: 'v=spf1 include:_spf.mailgun.org ~all',
-            valid: true,
-            ip_ranges: ['69.72.32.0/20', '104.130.122.0/23']
-          }
-        ],
-        recommendations: [
-          'Consider using "-all" instead of "~all" for stricter policy',
-          'Monitor DNS lookup count to stay under the 10 lookup limit',
-          'Regularly audit included domains for security'
-        ],
-        security_score: 85
-      };
+        body: JSON.stringify({ domain: domain.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate SPF');
+      }
+
+      const result = await response.json();
+      setResults(result);
       
-      setResults(mockResults);
+      toast({
+        title: "SPF Validation Complete",
+        description: `SPF record for ${domain} validated successfully.`,
+      });
+    } catch (error) {
+      console.error('Error validating SPF:', error);
+      toast({
+        variant: "destructive",
+        title: "SPF Validation Failed",
+        description: "Failed to validate SPF record. Please check your backend connection.",
+      });
+    } finally {
       setIsValidating(false);
-    }, 1500);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -126,56 +109,62 @@ const SPFValidator = () => {
                 <label className="text-sm font-medium text-slate-300">Domain</label>
                 <p className="text-white font-mono text-lg">{results.domain}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-slate-300">SPF Record</label>
-                <div className="bg-slate-900/50 p-4 rounded-lg">
-                  <code className="text-green-400 break-all">{results.record}</code>
+              {results.record && (
+                <div>
+                  <label className="text-sm font-medium text-slate-300">SPF Record</label>
+                  <div className="bg-slate-900/50 p-4 rounded-lg">
+                    <code className="text-green-400 break-all">{results.record}</code>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.security_score}%</div>
-                  <div className="text-sm text-slate-300">Security Score</div>
+              )}
+              {results.security_score !== undefined && results.lookups && results.mechanisms && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.security_score}%</div>
+                    <div className="text-sm text-slate-300">Security Score</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.lookups.total}/{results.lookups.limit}</div>
+                    <div className="text-sm text-slate-300">DNS Lookups</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.mechanisms.length}</div>
+                    <div className="text-sm text-slate-300">Mechanisms</div>
+                  </div>
                 </div>
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.lookups.total}/{results.lookups.limit}</div>
-                  <div className="text-sm text-slate-300">DNS Lookups</div>
-                </div>
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.mechanisms.length}</div>
-                  <div className="text-sm text-slate-300">Mechanisms</div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Mechanisms Analysis */}
-          <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Server className="h-5 w-5 text-purple-400" />
-                SPF Mechanisms
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {results.mechanisms.map((mechanism: any, index: number) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
-                    {getStatusIcon(mechanism.status)}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-slate-300 font-mono">
-                          {mechanism.type}
-                        </Badge>
-                        <code className="text-green-400">{mechanism.value}</code>
+          {results.mechanisms && (
+            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Server className="h-5 w-5 text-purple-400" />
+                  SPF Mechanisms
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {results.mechanisms.map((mechanism: any, index: number) => (
+                    <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
+                      {getStatusIcon(mechanism.status)}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-slate-300 font-mono">
+                            {mechanism.type}
+                          </Badge>
+                          <code className="text-green-400">{mechanism.value}</code>
+                        </div>
+                        <p className="text-slate-300 text-sm">{mechanism.description}</p>
                       </div>
-                      <p className="text-slate-300 text-sm">{mechanism.description}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Policy Analysis */}
           <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">

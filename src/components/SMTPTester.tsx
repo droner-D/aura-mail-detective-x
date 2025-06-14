@@ -26,7 +26,7 @@ const formSchema = z.object({
   emailsToSend: z.coerce.number().min(1, "Minimum 1 email").max(1000, "Maximum 1000 emails").default(1),
 }).refine(data => !data.useAuthentication || (data.username && data.password), {
   message: "Username and password are required for authentication",
-  path: ["username"], // you can point to a specific field
+  path: ["username"],
 });
 
 const SMTPTester = () => {
@@ -90,31 +90,56 @@ const SMTPTester = () => {
     form.setValue('customHeaders', newHeaders);
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     setResults(null);
-    console.log('Simulating SMTP test with values:', values);
+    console.log('Testing SMTP with values:', values);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const success = Math.random() > 0.2; // 80% success rate
-      if (success) {
-        setResults(`✅ Successfully connected to ${values.serverAddress}:${values.port}.\n✅ Simulated sending ${values.emailsToSend} test email(s) using ${values.threads} thread(s).`);
-        toast({
-          title: "Success!",
-          description: "Test emails sent successfully.",
-          variant: 'default',
-          className: 'bg-green-600 text-white border-green-700'
-        });
-      } else {
-        setResults(`❌ Failed to connect to SMTP server ${values.serverAddress}:${values.port}.\nPlease check your credentials and server details.`);
-        toast({
-          variant: "destructive",
-          title: "Error!",
-          description: "Failed to send test emails.",
-        });
+    try {
+      const response = await fetch('/api/test-smtp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          server_address: values.serverAddress,
+          port: values.port,
+          use_authentication: values.useAuthentication,
+          username: values.username,
+          password: values.password,
+          recipients: values.recipients.split(',').map(email => email.trim()).filter(Boolean),
+          subject: values.subject,
+          body: values.body,
+          custom_headers: values.customHeaders?.filter(header => header.key && header.value) || [],
+          threads: values.threads,
+          emails_to_send: values.emailsToSend,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to test SMTP connection');
       }
-    }, 2000);
+
+      const result = await response.json();
+      setResults(result.message || `✅ Successfully tested SMTP connection to ${values.serverAddress}:${values.port}`);
+      
+      toast({
+        title: "SMTP Test Complete",
+        description: "SMTP connection tested successfully.",
+      });
+    } catch (error) {
+      console.error('Error testing SMTP:', error);
+      const errorMessage = `❌ Failed to connect to SMTP server ${values.serverAddress}:${values.port}.\nPlease check your credentials and server details.`;
+      setResults(errorMessage);
+      
+      toast({
+        variant: "destructive",
+        title: "SMTP Test Failed",
+        description: "Failed to test SMTP connection. Please check your backend connection.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -181,7 +206,7 @@ const SMTPTester = () => {
             </Card>
 
             <Button type="submit" size="lg" className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-lg" disabled={isLoading}>
-              {isLoading ? 'Running Test...' : 'Test Connection & Send Emails'} <Send className="ml-2 h-5 w-5"/>
+              {isLoading ? 'Testing Connection...' : 'Test Connection & Send Emails'} <Send className="ml-2 h-5 w-5"/>
             </Button>
           </form>
         </Form>

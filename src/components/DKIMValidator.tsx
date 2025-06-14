@@ -1,79 +1,56 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Key, CheckCircle, XCircle, AlertTriangle, Lock, Hash, Shield } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 const DKIMValidator = () => {
   const [domain, setDomain] = useState('');
   const [selector, setSelector] = useState('');
   const [results, setResults] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const { toast } = useToast();
 
   const validateDKIM = async () => {
     if (!domain.trim() || !selector.trim()) return;
     
     setIsValidating(true);
     
-    // Simulate API call - replace with actual backend call
-    setTimeout(() => {
-      const mockResults = {
-        domain: domain,
-        selector: selector,
-        record_found: true,
-        dkim_record: 'k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7vbqajDw4o2FS...',
-        public_key: {
-          algorithm: 'RSA',
-          key_type: 'rsa',
-          key_size: 1024,
-          valid: true,
-          expires: null
+    try {
+      const response = await fetch('/api/validate-dkim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        signature_analysis: {
-          canonicalization: 'relaxed/simple',
-          hash_algorithm: 'sha256',
-          signature_valid: true,
-          body_hash_valid: true,
-          header_hash_valid: true
-        },
-        configuration: {
-          version: '1',
-          acceptable_hash_algorithms: ['sha256'],
-          key_type: 'rsa',
-          public_key_data: 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7vbqajDw4o2FS...',
-          service_type: 'email',
-          flags: []
-        },
-        security_analysis: {
-          key_strength: 'Weak (1024-bit)',
-          recommended_key_size: '2048-bit or higher',
-          rotation_status: 'No rotation detected',
-          vulnerabilities: [
-            '1024-bit RSA keys are considered weak by modern standards',
-            'No key rotation policy detected'
-          ]
-        },
-        validation_tests: [
-          { test: 'DNS Record Existence', status: 'pass', details: 'DKIM record found at selector._domainkey.domain.com' },
-          { test: 'Public Key Format', status: 'pass', details: 'Valid RSA public key format' },
-          { test: 'Key Size Check', status: 'warning', details: '1024-bit key detected (recommend 2048-bit)' },
-          { test: 'Signature Algorithm', status: 'pass', details: 'SHA-256 hash algorithm (secure)' },
-          { test: 'Record Syntax', status: 'pass', details: 'DKIM record syntax is valid' }
-        ],
-        recommendations: [
-          'Upgrade to 2048-bit RSA keys for better security',
-          'Implement key rotation policy (recommended: every 6-12 months)',
-          'Consider using Ed25519 keys for better performance',
-          'Monitor for key expiration if using time-limited keys'
-        ],
-        security_score: 72
-      };
+        body: JSON.stringify({ 
+          domain: domain.trim(),
+          selector: selector.trim()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate DKIM');
+      }
+
+      const result = await response.json();
+      setResults(result);
       
-      setResults(mockResults);
+      toast({
+        title: "DKIM Validation Complete",
+        description: `DKIM record for ${selector}._domainkey.${domain} validated successfully.`,
+      });
+    } catch (error) {
+      console.error('Error validating DKIM:', error);
+      toast({
+        variant: "destructive",
+        title: "DKIM Validation Failed",
+        description: "Failed to validate DKIM record. Please check your backend connection.",
+      });
+    } finally {
       setIsValidating(false);
-    }, 1800);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -154,65 +131,71 @@ const DKIMValidator = () => {
                   <p className="text-white font-mono text-lg">{results.selector}</p>
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-slate-300">DKIM Record</label>
-                <div className="bg-slate-900/50 p-4 rounded-lg">
-                  <code className="text-green-400 break-all text-sm">{results.dkim_record}</code>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className={`text-2xl font-bold ${getScoreColor(results.security_score)}`}>
-                    {results.security_score}%
+              {results.dkim_record && (
+                <div>
+                  <label className="text-sm font-medium text-slate-300">DKIM Record</label>
+                  <div className="bg-slate-900/50 p-4 rounded-lg">
+                    <code className="text-green-400 break-all text-sm">{results.dkim_record}</code>
                   </div>
-                  <div className="text-sm text-slate-300">Security Score</div>
                 </div>
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.public_key.key_size}</div>
-                  <div className="text-sm text-slate-300">Key Size (bits)</div>
+              )}
+              {results.security_score !== undefined && results.public_key && results.signature_analysis && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className={`text-2xl font-bold ${getScoreColor(results.security_score)}`}>
+                      {results.security_score}%
+                    </div>
+                    <div className="text-sm text-slate-300">Security Score</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.public_key.key_size}</div>
+                    <div className="text-sm text-slate-300">Key Size (bits)</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.public_key.algorithm}</div>
+                    <div className="text-sm text-slate-300">Algorithm</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-900/50 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{results.signature_analysis.hash_algorithm.toUpperCase()}</div>
+                    <div className="text-sm text-slate-300">Hash Algorithm</div>
+                  </div>
                 </div>
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.public_key.algorithm}</div>
-                  <div className="text-sm text-slate-300">Algorithm</div>
-                </div>
-                <div className="text-center p-4 bg-slate-900/50 rounded-lg">
-                  <div className="text-2xl font-bold text-white">{results.signature_analysis.hash_algorithm.toUpperCase()}</div>
-                  <div className="text-sm text-slate-300">Hash Algorithm</div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Validation Tests */}
-          <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-400" />
-                Validation Tests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {results.validation_tests.map((test: any, index: number) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
-                    {getStatusIcon(test.status)}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-white font-semibold">{test.test}</h4>
-                        <Badge className={`${
-                          test.status === 'pass' ? 'bg-green-500' : 
-                          test.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
-                        } text-white`}>
-                          {test.status.toUpperCase()}
-                        </Badge>
+          {results.validation_tests && (
+            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  Validation Tests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {results.validation_tests.map((test: any, index: number) => (
+                    <div key={index} className="flex items-start gap-4 p-4 bg-slate-900/50 rounded-lg">
+                      {getStatusIcon(test.status)}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-white font-semibold">{test.test}</h4>
+                          <Badge className={`${
+                            test.status === 'pass' ? 'bg-green-500' : 
+                            test.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                          } text-white`}>
+                            {test.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-slate-300 text-sm">{test.details}</p>
                       </div>
-                      <p className="text-slate-300 text-sm">{test.details}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Public Key Analysis */}
           <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
