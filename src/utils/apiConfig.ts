@@ -1,6 +1,7 @@
 
+
 // API configuration for backend integration
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export const API_ENDPOINTS = {
   ANALYZE_HEADERS: '/api/analyze-headers',
@@ -8,6 +9,8 @@ export const API_ENDPOINTS = {
   VALIDATE_DKIM: '/api/validate-dkim',
   VALIDATE_DMARC: '/api/validate-dmarc',
   TEST_SMTP: '/api/test-smtp',
+  MX_LOOKUP: '/api/mx-lookup',
+  SMTP_SERVER_TEST: '/api/smtp-server-test',
 };
 
 export const getApiUrl = (endpoint: string) => {
@@ -29,3 +32,4 @@ export const apiRequest = async (endpoint: string, data: any) => {
 
   return response.json();
 };
+
