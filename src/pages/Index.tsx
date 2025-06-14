@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Mail, Shield, Key, Lock, Zap, ArrowRight, Send } from 'lucide-react';
+import { Mail, Shield, Key, Lock, Zap, ArrowRight, Send, Globe, Server } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmailHeaderAnalyzer from '@/components/EmailHeaderAnalyzer';
@@ -7,6 +8,8 @@ import SPFValidator from '@/components/SPFValidator';
 import DKIMValidator from '@/components/DKIMValidator';
 import DMARCAnalyzer from '@/components/DMARCAnalyzer';
 import SMTPTester from '@/components/SMTPTester';
+import MXLookup from '@/components/MXLookup';
+import SMTPServerTest from '@/components/SMTPServerTest';
 
 const Index = () => {
   const [activeTool, setActiveTool] = useState<string | null>(null);
@@ -51,6 +54,22 @@ const Index = () => {
       icon: Send,
       color: 'from-yellow-500 to-amber-500',
       component: SMTPTester
+    },
+    {
+      id: 'mx-lookup',
+      title: 'MX Lookup',
+      description: 'Lookup Mail Exchange records for a domain to see mail server configuration',
+      icon: Globe,
+      color: 'from-teal-500 to-cyan-500',
+      component: MXLookup
+    },
+    {
+      id: 'smtp-server-test',
+      title: 'SMTP Server Test',
+      description: 'Test SMTP server connectivity, STARTTLS support, and authentication methods',
+      icon: Server,
+      color: 'from-indigo-500 to-purple-500',
+      component: SMTPServerTest
     }
   ];
 

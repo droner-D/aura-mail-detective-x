@@ -1,4 +1,3 @@
-
 // TypeScript interfaces for API responses
 
 export interface EmailSummary {
@@ -111,4 +110,40 @@ export interface SMTPTestResult {
   };
   emails_sent: number;
   errors: string[];
+}
+
+export interface MXRecord {
+  host: string;
+  priority: number;
+  ip_addresses: string[];
+}
+
+export interface MXLookupResult {
+  domain: string;
+  mx_records: MXRecord[];
+  has_mx: boolean;
+  total_records: number;
+  lowest_priority: number;
+  security_score: number;
+  recommendations: string[];
+}
+
+export interface SMTPServerTestResult {
+  server: string;
+  port: number;
+  connection_successful: boolean;
+  starttls_supported: boolean;
+  starttls_required: boolean;
+  auth_methods: string[];
+  server_banner: string;
+  ehlo_response: string[];
+  response_time: number;
+  security_analysis: {
+    tls_version: string;
+    cipher_suite: string;
+    certificate_valid: boolean;
+    certificate_issuer: string;
+    certificate_expires: string;
+  };
+  error_message?: string;
 }
