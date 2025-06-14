@@ -1,12 +1,12 @@
-
 import { useState } from 'react';
-import { Mail, Shield, Key, Lock, Zap, ArrowRight } from 'lucide-react';
+import { Mail, Shield, Key, Lock, Zap, ArrowRight, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EmailHeaderAnalyzer from '@/components/EmailHeaderAnalyzer';
 import SPFValidator from '@/components/SPFValidator';
 import DKIMValidator from '@/components/DKIMValidator';
 import DMARCAnalyzer from '@/components/DMARCAnalyzer';
+import SMTPTester from '@/components/SMTPTester';
 
 const Index = () => {
   const [activeTool, setActiveTool] = useState<string | null>(null);
@@ -43,6 +43,14 @@ const Index = () => {
       icon: Lock,
       color: 'from-orange-500 to-red-500',
       component: DMARCAnalyzer
+    },
+    {
+      id: 'smtp-tester',
+      title: 'SMTP Connection Tester',
+      description: 'Test SMTP connections and send bulk test emails with multi-recipient support and custom headers.',
+      icon: Send,
+      color: 'from-yellow-500 to-amber-500',
+      component: SMTPTester
     }
   ];
 
