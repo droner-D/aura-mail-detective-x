@@ -10,6 +10,10 @@ export const API_ENDPOINTS = {
   TEST_SMTP: '/api/test-smtp',
 };
 
+export const getApiUrl = (endpoint: string) => {
+  return `${API_BASE_URL}${endpoint}`;
+};
+
 export const apiRequest = async (endpoint: string, data: any) => {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
